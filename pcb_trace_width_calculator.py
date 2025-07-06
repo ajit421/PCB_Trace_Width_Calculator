@@ -1,148 +1,140 @@
-def pcb_trace_calculator(
-    current, 
-    thickness_value, 
-    thickness_unit, 
-    length_value, 
-    length_unit, 
-    temp_rise_value, 
-    temp_rise_unit
-):
-    # Convert temperature rise to °C
-    if temp_rise_unit == 'F':
-        delta_T = temp_rise_value * 5/9
-    elif temp_rise_unit == 'C':
-        delta_T = temp_rise_value
-    
-    # Handle zero current case
-    if current == 0:
-        zero_result = {
-            'width': {'mil': 0, 'mm': 0, 'µm': 0},
-            'resistance': float('inf'),
-            'voltage_drop': 0,
-            'power_loss': 0
-        }
-        return {'internal_layers': zero_result, 'external_layers': zero_result}
-    
-    # Validate temperature rise when current is present
-    if delta_T <= 0:
-        raise ValueError("Temperature rise must be positive when current > 0")
-    
-    # Convert thickness to oz
-    if thickness_unit == 'oz':
-        t_oz = thickness_value
-    elif thickness_unit == 'mil':
-        t_oz = thickness_value * (25.4 / 34.79)
-    elif thickness_unit == 'mm':
-        t_oz = thickness_value * (1000 / 34.79)
-    elif thickness_unit == 'µm':
-        t_oz = thickness_value / 34.79
-    
-    # Convert length to meters
-    if length_unit == 'm':
-        length_m = length_value
-    elif length_unit == 'in':
-        length_m = length_value * 0.0254
-    elif length_unit == 'ft':
-        length_m = length_value * 0.3048
-    elif length_unit == 'mil':
-        length_m = length_value * 2.54e-5
-    elif length_unit == 'mm':
-        length_m = length_value * 0.001
-    elif length_unit == 'µm':
-        length_m = length_value * 1e-6
-    elif length_unit == 'cm':
-        length_m = length_value * 0.01
-    
-    # Copper resistivity (Ω·m)
-    rho = 1.7e-8
-    
-    # Calculate cross-sectional area (mil²)
-    # Internal layers: k=0.024, b=0.44, c=0.725
-    A_int = (current / (0.024 * (delta_T ** 0.44))) ** (1/0.725)
-    # External layers: k=0.048, b=0.44, c=0.725
-    A_ext = (current / (0.048 * (delta_T ** 0.44))) ** (1/0.725)
-    
-    # Calculate trace width (mil)
-    W_int_mil = A_int / (t_oz * 1.378)
-    W_ext_mil = A_ext / (t_oz * 1.378)
-    
-    # Convert width to mm and µm
-    W_int_mm = W_int_mil * 0.0254
-    W_int_um = W_int_mil * 25.4
-    W_ext_mm = W_ext_mil * 0.0254
-    W_ext_um = W_ext_mil * 25.4
-    
-    # Calculate resistance (Ω)
-    A_int_m2 = A_int * 6.4516e-10
-    A_ext_m2 = A_ext * 6.4516e-10
-    
-    R_int = (rho * length_m) / A_int_m2
-    R_ext = (rho * length_m) / A_ext_m2
-    
-    # Calculate voltage drop (V)
-    V_int = current * R_int
-    V_ext = current * R_ext
-    
-    # Calculate power loss (W)
-    P_int = (current ** 2) * R_int
-    P_ext = (current ** 2) * R_ext
-    
-    # Prepare results with full precision
-    internal = {
-        'width': {
-            'mil': W_int_mil,
-            'mm': W_int_mm,
-            'µm': W_int_um
-        },
-        'resistance': R_int,
-        'voltage_drop': V_int,
-        'power_loss': P_int
-    }
-    
-    external = {
-        'width': {
-            'mil': W_ext_mil,
-            'mm': W_ext_mm,
-            'µm': W_ext_um
-        },
-        'resistance': R_ext,
-        'voltage_drop': V_ext,
-        'power_loss': P_ext
-    }
-    
-    return {
-        'internal_layers': internal,
-        'external_layers': external
-    }
+import math
 
-def get_user_input():
-    print("=== PCB Trace Width Calculator ===")
-    print("Based on IPC-2221 Standards\n")
+# Constants - Updated with correct IPC-2221 factors
+MIL_PER_OZ = 1.378 # 1 oz/ft² = 1.378 mil (standard for copper)
+RESISTIVITY_25C = 1.724e-8  # Copper resistivity at 25°C (Ω·m)
+TEMP_COEFFICIENT = 0.00393  # Temperature coefficient for copper (per °C)
+
+# Precomputed thickness conversion factors - Corrected
+FACTOR_MIL = 1 / MIL_PER_OZ  # mil to oz/ft²
+FACTOR_MM = 1000 / (25.4 * MIL_PER_OZ)  # mm to oz/ft²
+FACTOR_UM = 1 / (25.4 * MIL_PER_OZ)  # µm to oz/ft²
+
+# Correct IPC-2221 constants
+IPC2221_CONSTANTS = {
+    "internal": {"k": 0.024, "b": 0.44, "c": 0.725},
+    "external": {"k": 0.048, "b": 0.44, "c": 0.725}
+}
+
+# Convert Fahrenheit to Celsius
+def fahrenheit_to_celsius(f):
+    return (f - 32) * 5 / 9
+
+# Convert thickness to oz/ft²
+def convert_thickness_to_oz(value, unit):
+    # Convert thickness to oz/ft² using correct IPC-2221 conversion factors
+    if unit == 1:  # oz/ft²
+        return value
+    elif unit == 2:  # mil
+        return value * FACTOR_MIL
+    elif unit == 3:  # mm
+        return value * FACTOR_MM
+    elif unit == 4:  # µm
+        return value * FACTOR_UM
+    else:
+        raise ValueError("Invalid thickness unit selected.")
+
+# Convert length to meters
+def convert_length_to_meters(value, unit):
+    # Conversion factors to meters
+    conversions = {
+        1: 0.0254,      # in -> m
+        2: 0.3048,      # ft -> m
+        3: 0.0000254,   # mil -> m
+        4: 0.001,       # mm -> m
+        5: 0.000001,    # µm -> m
+        6: 0.01,        # cm -> m
+        7: 1.0          # m -> m
+    }
+    return value * conversions[unit]
+
+# Convert mil to mm
+def mil_to_mm(mil):
+    return mil * 0.0254
+
+# Convert mil to µm
+def mil_to_um(mil):
+    return mil * 25.4
+
+# Convert mm to mil
+def mm_to_mil(mm):
+    return mm / 0.0254
+
+# Convert µm to mil
+def um_to_mil(um):
+    return um / 25.4
+
+# Convert mil to square mm
+def mil2_to_mm2(mil2):
+    return mil2 * (0.0254 ** 2)
+
+# Calculate trace width
+def calculate_trace_width(current, temp_rise, thickness_oz, layer_type):
+    # Get correct IPC-2221 constants
+    constants = IPC2221_CONSTANTS[layer_type]
+    k = constants["k"]
+    b = constants["b"]
+    c = constants["c"]
     
-    # Get current input
+    # Calculate cross-sectional area (mil²) - CORRECTED FORMULA
+    # Area = [I / (k * ΔT^b)]^(1/c)
+    area_mil2 = (current / (k * (temp_rise ** b))) ** (1 / c)
+    
+    # Convert thickness to mil
+    thickness_mil = thickness_oz * MIL_PER_OZ
+    
+    # Calculate width in mil (W = A / t)
+    width_mil = area_mil2 / thickness_mil
+    
+    return area_mil2, width_mil
+
+# Calculate resistance
+def calculate_resistance(length_m, width_mil, thickness_oz, operating_temp):
+    # Adjust resistivity for operating temperature
+    rho = RESISTIVITY_25C * (1 + TEMP_COEFFICIENT * (operating_temp - 25))
+    
+    # Convert dimensions to meters
+    width_m = width_mil * 0.0000254  # mil to meters
+    thickness_m = thickness_oz * MIL_PER_OZ * 0.0000254  # oz to mil to meters
+    
+    # Calculate cross-sectional area in m²
+    area_m2 = width_m * thickness_m
+    
+    # Calculate resistance
+    resistance = rho * length_m / area_m2
+    
+    return resistance
+
+# Get user input
+def get_user_input():
+    print("=== PCB Trace Width Calculator ===\n")
+    
     current = float(input("Enter Current (A): "))
     
-    # Get ambient temperature input
-    print("\nAmbient Temperature Units:")
+    # Ambient temperature handling
+    print("\nAmbient Temperature:")
     print("1. °C")
     print("2. °F")
-    ambient_unit = input("Choose unit (1-2): ")
-    ambient_value = float(input("Enter Ambient Temperature: "))
-    ambient_unit = 'C' if ambient_unit == '1' else 'F'
+    temp_unit = int(input("Select unit: "))
+    ambient_temp = float(input("Enter Ambient Temperature: "))
     
-    # Get thickness input
-    print("\nThickness Units:")
+    if temp_unit == 2:
+        ambient_temp = fahrenheit_to_celsius(ambient_temp)
+    elif temp_unit != 1:
+        raise ValueError("Invalid unit selected for ambient temperature.")
+    
+    # Thickness input
+    print("\nThickness:")
     print("1. oz/ft² (oz)")
     print("2. mil")
     print("3. mm")
     print("4. µm")
-    thickness_unit = input("Choose unit (1-4): ")
+    thickness_unit = int(input("Select unit: "))
     thickness_value = float(input("Enter Thickness value: "))
-    units_map = {'1': 'oz', '2': 'mil', '3': 'mm', '4': 'µm'}
-    thickness_unit = units_map.get(thickness_unit, 'oz')
+    thickness_oz = convert_thickness_to_oz(thickness_value, thickness_unit)
     
-    # Get length input
-    print("\nLength Units:")
+    # Trace length input
+    print("\nTrace Length:")
     print("1. in")
     print("2. ft")
     print("3. mil")
@@ -150,92 +142,76 @@ def get_user_input():
     print("5. µm")
     print("6. cm")
     print("7. m")
-    length_unit = input("Choose unit (1-7): ")
+    length_unit = int(input("Select unit: "))
     length_value = float(input("Enter Trace Length value: "))
-    units_map = {'1': 'in', '2': 'ft', '3': 'mil', '4': 'mm', '5': 'µm', '6': 'cm', '7': 'm'}
-    length_unit = units_map.get(length_unit, 'm')
+    length_m = convert_length_to_meters(length_value, length_unit)
     
-    # Get temperature rise input
-    print("\nTemperature Rise Units:")
+    # Temperature rise handling - CRITICAL FIX: Delta conversion
+    print("\nTemperature Rise:")
     print("1. °C")
     print("2. °F")
-    temp_rise_unit = input("Choose unit (1-2): ")
-    temp_rise_value = float(input("Enter Temperature Rise value: "))
-    temp_rise_unit = 'C' if temp_rise_unit == '1' else 'F'
+    temp_rise_unit = int(input("Select unit: "))
+    temp_rise = float(input("Enter Temperature Rise value: "))
+
+    # Delta temperature conversion (F to C)
+    if temp_rise_unit == 2:
+        temp_rise = temp_rise * 5/9  # Δ°F to Δ°C conversion
+    elif temp_rise_unit != 1:
+        raise ValueError("Invalid unit selected for temperature rise.")
     
-    return {
-        'current': current,
-        'ambient_temp': ambient_value,
-        'ambient_unit': ambient_unit,
-        'thickness_value': thickness_value,
-        'thickness_unit': thickness_unit,
-        'length_value': length_value,
-        'length_unit': length_unit,
-        'temp_rise_value': temp_rise_value,
-        'temp_rise_unit': temp_rise_unit
-    }
+    return current, ambient_temp, thickness_oz, length_m, temp_rise
 
-def format_high_precision(value):
-    """Format a value with 10 decimal places, handling infinity"""
-    if value == float('inf'):
-        return "Infinity"
-    return f"{value:.10f}"
+# Display results
+def display_results(current, ambient_temp, thickness_oz, length_m, temp_rise):
+    # Calculate operating temperature
+    operating_temp = ambient_temp + temp_rise
+    
+    print("\n" + "="*60)
+    print("CALCULATION RESULTS")
+    print("="*60)
+    print(f"Operating Temperature: {operating_temp:.10f} °C")
+    
+    for layer_type in ["internal", "external"]:
+        print(f"\n{layer_type.upper()} LAYERS:")
+        print("-" * 40)
+        
+        # Calculate trace width
+        area_mil2, width_mil = calculate_trace_width( current, temp_rise, thickness_oz, layer_type)
+        
+        # Calculate resistance with operating temperature
+        resistance = calculate_resistance(length_m, width_mil, thickness_oz, operating_temp)
+        
+        # Calculate derived values
+        voltage_drop = current * resistance
+        power_loss = current * voltage_drop
+        
+        # Display results
+        print(f"Required Trace Width:")
+        print(f"{width_mil:.10f} mil / {mil_to_mm(width_mil):.10f} mm / {mil_to_um(width_mil):.10f} µm")
 
+        area_mm2 = mil2_to_mm2(area_mil2)
+        print(f"\nCross-sectional Area: {area_mil2:.10f} mil² / {area_mm2:.10f} mm²")
+        print(f"Resistance: {resistance:.10f} Ω")
+        print(f"Voltage Drop: {voltage_drop:.10f} V")
+        print(f"Power Loss: {power_loss:.10f} W")
+
+# Main function
 def main():
-    while True:
-        try:
-            # Get user inputs
-            inputs = get_user_input()
-            
-            # Display input summary with high precision
-            print("\n=== Input Summary ===")
-            print(f"Current: {inputs['current']:.10f} A")
-            print(f"Ambient Temperature: {inputs['ambient_temp']:.10f} °{inputs['ambient_unit']}")
-            print(f"Copper Thickness: {inputs['thickness_value']:.10f} {inputs['thickness_unit']}")
-            print(f"Trace Length: {inputs['length_value']:.10f} {inputs['length_unit']}")
-            print(f"Temperature Rise: {inputs['temp_rise_value']:.10f} °{inputs['temp_rise_unit']}")
-            
-            # Perform calculations
-            results = pcb_trace_calculator(
-                current=inputs['current'],
-                thickness_value=inputs['thickness_value'],
-                thickness_unit=inputs['thickness_unit'],
-                length_value=inputs['length_value'],
-                length_unit=inputs['length_unit'],
-                temp_rise_value=inputs['temp_rise_value'],
-                temp_rise_unit=inputs['temp_rise_unit']
-            )
-            
-            # Display results with high precision
-            print("\n=== Results ===")
-            
-            # Internal Layers
-            print("\nInternal Layers:")
-            w = results['internal_layers']['width']
-            print(f"Required Trace Width: {format_high_precision(w['mil'])} mil | "
-                  f"{format_high_precision(w['mm'])} mm | "
-                  f"{format_high_precision(w['µm'])} µm")
-            print(f"Resistance: {format_high_precision(results['internal_layers']['resistance'])} Ω")
-            print(f"Voltage Drop: {format_high_precision(results['internal_layers']['voltage_drop'])} V")
-            print(f"Power Loss: {format_high_precision(results['internal_layers']['power_loss'])} W")
-            
-            # External Layers
-            print("\nExternal Layers in Air:")
-            w = results['external_layers']['width']
-            print(f"Required Trace Width: {format_high_precision(w['mil'])} mil | "
-                  f"{format_high_precision(w['mm'])} mm | "
-                  f"{format_high_precision(w['µm'])} µm")
-            print(f"Resistance: {format_high_precision(results['external_layers']['resistance'])} Ω")
-            print(f"Voltage Drop: {format_high_precision(results['external_layers']['voltage_drop'])} V")
-            print(f"Power Loss: {format_high_precision(results['external_layers']['power_loss'])} W")
-            
-            break
-            
-        except Exception as e:
-            print(f"\nError: {str(e)}")
-            print("Please try again with valid inputs.\n")
-            continue
+    try:
+        # Get user input
+        current, ambient_temp, thickness_oz, length_m, temp_rise = get_user_input()
+        
+        # Calculate and display results
+        display_results(current, ambient_temp, thickness_oz, length_m, temp_rise)
 
+       
+    except ValueError as ve:
+        print(f"Input Error: {ve}")
+    except KeyboardInterrupt:
+        print("\nCalculation cancelled.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+# Run the program
 if __name__ == "__main__":
     main()
-    
