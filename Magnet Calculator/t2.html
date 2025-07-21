@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Animated Magnet Field Calculator</title>
+    <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.166.1/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.166.1/examples/jsm/"
+        }
+    }
+    </script>
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$']] } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #5f72bd 0%, #a460b6 100%);
+            --secondary-gradient: linear-gradient(135deg, #ff8c42 0%, #ff4b5c 100%);
+            --card-bg: rgba(255, 255, 255, 0.98);
+            --shadow-color: rgba(44, 51, 80, 0.2);
+            --text-dark: #2c3e50;
+            --text-light: #ffffff;
+            --border-color: #dcdfe6;
+            --border-focus: #5f72bd;
+            --border-invalid: #ff4b5c;
+            --canvas-bg: #f9f9fc;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--primary-gradient);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            overflow: hidden;
+        }
+        .calculator-container {
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px var(--shadow-color);
+            padding: 40px;
+            width: 100%;
+            max-width: 1200px;
+        }
+        .main-layout { display: flex; gap: 40px; }
+        .input-column { flex: 1; min-width: 320px; }
+        .output-column {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        .header { text-align: center; margin-bottom: 30px; }
+        .title { font-size: 2.2rem; font-weight: 700; color: var(--text-dark); }
+        .subtitle { color: #5a6a85; font-size: 1.1rem; }
+        .magnet-tabs { display: flex; justify-content: center; margin-bottom: 30px; gap: 10px; }
+        .tab-btn {
+            background: #fff;
+            color: #5a6a85;
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.25s ease;
+        }
+        .tab-btn:hover { border-color: var(--border-focus); color: var(--border-focus); transform: translateY(-2px); }
+        .tab-btn.active {
+            background: var(--primary-gradient);
+            color: var(--text-light);
+            border-color: transparent;
+            box-shadow: 0 10px 20px -5px var(--shadow-color);
+        }
+        .calculator-section { display: none; }
+        .calculator-section.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .input-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        .input-group { position: relative; }
+        .input-label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-weight: 600; color: var(--text-dark); }
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.25s ease;
+        }
+        .input-field:focus { outline: none; border-color: var(--border-focus); }
+        .input-field:invalid { border-color: var(--border-invalid); }
+        .magnet-visual { width: 100%; max-width: 450px; aspect-ratio: 2 / 1; cursor: grab; }
+        .magnet-visual:active { cursor: grabbing; }
+        .magnet-canvas {
+            background-color: var(--canvas-bg);
+            border-radius: 12px;
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .formula-display {
+            background: var(--canvas-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px 20px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .result-section, .error-message {
+            padding: 20px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            font-weight: 600;
+        }
+        .result-section { background: var(--primary-gradient); color: var(--text-light); }
+        .result-value { font-size: 2.2rem; font-weight: 700; animation: pulse 1.5s ease-in-out infinite; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+        .error-message { background: var(--border-invalid); color: var(--text-light); display: none; }
+        @media (max-width: 992px) { .main-layout { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<div class="calculator-container">
+    <div class="main-layout">
+        <div class="input-column">
+             <div class="header">
+                <h1 class="title">3D Animated Magnet Calculator</h1>
+                <p class="subtitle">Select a shape and enter its dimensions below.</p>
+            </div>
+            <div class="magnet-tabs">
+                <button class="tab-btn active" data-tab="block" type="button">🔲 Block</button>
+                <button class="tab-btn" data-tab="ring" type="button">⭕ Ring</button>
+                <!-- <button class="tab-btn" data-tab="cylinder" type="button">🔴 Cylinder</button> -->
+            </div>
+            <div id="block" class="calculator-section active">
+                <div class="input-grid">
+                    <div class="input-group"><label class="input-label">⚡ Remanence (Br)</label><input type="number" class="input-field" id="block_remanence" step="0.01" min="0" value="1.47" required></div>
+                    <div class="input-group"><label class="input-label">📏 Height (H)</label><input type="number" class="input-field" id="block_height" step="0.1" min="0.1" value="10" required></div>
+                    <div class="input-group"><label class="input-label">↔️ Length (L)</label><input type="number" class="input-field" id="block_length" step="0.1" min="0.1" value="20" required></div>
+                    <div class="input-group"><label class="input-label">↕️ Width (W)</label><input type="number" class="input-field" id="block_width" step="0.1" min="0.1" value="30" required></div>
+                </div>
+            </div>
+            <div id="ring" class="calculator-section">
+                <div class="input-grid">
+                    <div class="input-group"><label class="input-label">⚡ Remanence (Br)</label><input type="number" class="input-field" id="ring_remanence" step="0.01" min="0" value="1.47" required></div>
+                    <div class="input-group"><label class="input-label">📏 Height (H)</label><input type="number" class="input-field" id="ring_height" step="0.1" min="0.1" value="20" required></div>
+                    <div class="input-group"><label class="input-label">⭕ Outer Diameter (OD)</label><input type="number" class="input-field" id="ring_od" step="0.1" min="0.1" value="40" required></div>
+                    <div class="input-group"><label class="input-label">⚪ Inner Diameter (ID)</label><input type="number" class="input-field" id="ring_id" step="0.1" min="0.1" value="20" required></div>
+                </div>
+            </div>
+            <div id="cylinder" class="calculator-section">
+                <div class="input-grid">
+                    <div class="input-group"><label class="input-label">⚡ Remanence (Br)</label><input type="number" class="input-field" id="cylinder_remanence" step="0.01" min="0" value="1.47" required></div>
+                    <div class="input-group"><label class="input-label">📏 Height (H)</label><input type="number" class="input-field" id="cylinder_height" step="0.1" min="0.1" value="10" required></div>
+                    <div class="input-group"><label class="input-label">⭕ Diameter (D)</label><input type="number" class="input-field" id="cylinder_diameter" step="0.1" min="0.1" value="30" required></div>
+                </div>
+            </div>
+        </div>
+        <div class="output-column">
+            <div class="magnet-visual">
+                <canvas id="magnetCanvas" class="magnet-canvas"></canvas>
+            </div>
+            <div class="formula-display" id="formulaDisplay"></div>
+            <div class="result-section" id="result">
+                <div class="result-label">Magnetic Field Strength</div>
+                <div class="result-value" id="result_value">0.000000</div>
+                <div class="result-unit">Tesla (T)</div>
+            </div>
+            <div class="error-message" id="error"></div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // --- 1. 3D SCENE SETUP ---
+    const threeManager = {
+        scene: null, camera: null, renderer: null, controls: null, magnet: null,
+        init() {
+            this.scene = new THREE.Scene();
+            const canvas = document.getElementById('magnetCanvas');
+
+            this.camera = new THREE.PerspectiveCamera(50, canvas.clientWidth / canvas.clientHeight, 0.1, 1000);
+            this.camera.position.z = 5; // Initial position
+
+            this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            this.renderer.setPixelRatio(window.devicePixelRatio);
+            this.renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+
+            this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+            this.controls.enableDamping = true;
+            this.controls.autoRotate = true;
+            this.controls.autoRotateSpeed = 1.0;
+
+            const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
+            this.scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0);
+            directionalLight.position.set(5, 10, 7.5);
+            this.scene.add(directionalLight);
+
+            window.addEventListener('resize', () => this.onResize());
+            this.animate();
+        },
+        animate() {
+            requestAnimationFrame(() => this.animate());
+            this.controls.update();
+            this.renderer.render(this.scene, this.camera);
+        },
+        onResize() {
+            const canvas = this.renderer.domElement;
+            const container = canvas.parentElement;
+            this.camera.aspect = container.clientWidth / container.clientHeight;
+            this.camera.updateProjectionMatrix();
+            this.renderer.setSize(container.clientWidth, container.clientHeight);
+        },
+        updateMagnetModel(type, params) {
+            if (this.magnet) {
+                this.scene.remove(this.magnet);
+                this.magnet.geometry.dispose();
+                this.magnet.material.dispose();
+            }
+
+            let geometry;
+            const material = new THREE.MeshStandardMaterial({ color: 0xadb5bd, metalness: 0.9, roughness: 0.2 });
+
+            try {
+                switch (type) {
+                    case 'block':
+                        geometry = new THREE.BoxGeometry(params.width, params.height, params.length);
+                        break;
+                    case 'cylinder':
+                        geometry = new THREE.CylinderGeometry(params.diameter / 2, params.diameter / 2, params.height, 48);
+                        break;
+                    case 'ring':
+                        const shape = new THREE.Shape()
+                            .absarc(0, 0, params.od / 2, 0, Math.PI * 2, false);
+                        const hole = new THREE.Path()
+                            .absarc(0, 0, params.id / 2, 0, Math.PI * 2, true);
+                        shape.holes.push(hole);
+                        geometry = new THREE.ExtrudeGeometry(shape, { depth: params.height, bevelEnabled: false });
+                        geometry.center();
+                        break;
+                }
+            } catch (error) {
+                console.error("Error creating 3D geometry:", error);
+                return;
+            }
+
+            if (!geometry) return;
+            this.magnet = new THREE.Mesh(geometry, material);
+            this.scene.add(this.magnet);
+            this.frameObject(this.magnet);
+        },
+        frameObject(object) {
+            const box = new THREE.Box3().setFromObject(object);
+            const size = box.getSize(new THREE.Vector3());
+            const center = box.getCenter(new THREE.Vector3());
+            
+            this.controls.reset();
+            this.controls.target.copy(center);
+
+            const fov = this.camera.fov * (Math.PI / 180);
+            const maxDim = Math.max(size.x, size.y, size.z);
+            let distance = maxDim / (2 * Math.tan(fov / 2));
+            distance *= 1.5; // Add some padding
+
+            this.camera.position.copy(center);
+            this.camera.position.z += distance;
+            this.camera.lookAt(center);
+            this.camera.updateProjectionMatrix();
+        }
+    };
+    
+    // --- 2. CALCULATION LOGIC ---
+    const FORMULAS = {
+        block: `B = \\frac{2 B_r}{\\pi} \\arctan\\left(\\frac{LW}{2H \\sqrt{L^2 + W^2 + 4H^2}}\\right)`,
+        cylinder: `B = \\frac{B_r}{2} \\left( \\frac{H}{\\sqrt{R^2 + H^2}} \\right)`,
+        ring: `B = \\frac{B_r}{2} \\left( \\frac{H}{\\sqrt{R_o^2 + H^2}} - \\frac{H}{\\sqrt{R_i^2 + H^2}} \\right)`
+    };
+    const blockMagnet = (br, h, l, w) => (2 * br / Math.PI) * Math.atan((l * w) / (2 * h * Math.sqrt(l**2 + w**2 + 4 * h**2)));
+    const ringMagnet = (br, h, od, id) => (br / 2) * ((h / Math.sqrt((od/2)**2 + h**2)) - (h / Math.sqrt((id/2)**2 + h**2)));
+    const cylinderMagnet = (br, h, d) => (br / 2) * (h / Math.sqrt((d/2)**2 + h**2));
+
+    // --- 3. UI CONTROL & EVENT HANDLING ---
+    function calculateAndDisplay() {
+        const activeTab = document.querySelector('.tab-btn.active').dataset.tab;
+        const errorDiv = document.getElementById('error');
+        const resultDiv = document.getElementById('result');
+        const formInputs = document.querySelectorAll(`#${activeTab} .input-field`);
+        
+        errorDiv.style.display = 'none';
+        errorDiv.textContent = '';
+        let isValid = true;
+
+        // Reset custom validity messages
+        formInputs.forEach(input => input.setCustomValidity(''));
+
+        // Check native validity (min, required, etc.)
+        formInputs.forEach(input => {
+            if (!input.checkValidity()) {
+                isValid = false;
+                errorDiv.textContent = "Please enter valid, positive numbers.";
+            }
+        });
+
+        const params = Object.fromEntries(Array.from(formInputs).map(i => [i.id.split('_')[1], parseFloat(i.value)]));
+
+        // Custom validation for ring
+        if (activeTab === 'ring' && params.od <= params.id) {
+            isValid = false;
+            const odInput = document.getElementById('ring_od');
+            const idInput = document.getElementById('ring_id');
+            odInput.setCustomValidity('OD must be larger than ID.');
+            idInput.setCustomValidity('ID must be smaller than OD.');
+            errorDiv.textContent = "Outer Diameter must be greater than Inner Diameter.";
+        }
+        
+        if (!isValid) {
+            errorDiv.style.display = 'block';
+            resultDiv.style.display = 'none';
+            return;
+        }
+        
+        let result = 0;
+        if (activeTab === 'block') result = blockMagnet(params.remanence, params.height, params.length, params.width);
+        if (activeTab === 'ring') result = ringMagnet(params.remanence, params.height, params.od, params.id);
+        if (activeTab === 'cylinder') result = cylinderMagnet(params.remanence, params.height, params.diameter);
+
+        document.getElementById('result_value').textContent = result.toFixed(6);
+        resultDiv.style.display = 'block';
+        threeManager.updateMagnetModel(activeTab, params);
+    }
+
+    function updateFormula(tabName) {
+        const formulaDiv = document.getElementById('formulaDisplay');
+        formulaDiv.innerHTML = `$${FORMULAS[tabName]}$`;
+        if (window.MathJax?.typesetPromise) {
+            window.MathJax.typesetPromise([formulaDiv]).catch(err => console.error("MathJax Error: ", err));
+        }
+    }
+
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
+        document.querySelectorAll('.calculator-section').forEach(sec => sec.classList.toggle('active', sec.id === tabName));
+        updateFormula(tabName);
+        calculateAndDisplay();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        threeManager.init();
+        switchTab('block');
+
+        document.querySelector('.magnet-tabs').addEventListener('click', e => {
+            if (e.target.matches('.tab-btn:not(.active)')) switchTab(e.target.dataset.tab);
+        });
+        document.querySelectorAll('.input-field').forEach(input => input.addEventListener('input', calculateAndDisplay));
+    });
+</script>
+</body>
+</html>
