@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>PCB Trace Calculator</title>
+    <meta charset="UTF-8" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 40px auto;
+            border: 1px solid #ddd;
+            padding: 18px;
+        }
+
+        h2 {
+            text-align: center;
+        }
+
+        .input-row {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        input {
+            width: 100%;
+            padding: 6px;
+        }
+
+        .result {
+            background: #f4f8f8;
+            padding: 10px;
+            margin-top: 18px;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 8px 15px;
+            font-size: 1em;
+        }
+    </style>
+</head>
+
+<body>
+    <h2>PCB Parameter Calculator</h2>
+    <form id="pcbForm">
+        <div class="input-row">
+            <label>Current (A):</label>
+            <input type="number" step="any" id="current" required />
+        </div>
+        <div class="input-row">
+            <label>Ambient Temperature (°C):</label>
+            <input type="number" step="any" id="ambientTemp" required />
+        </div>
+
+        <div class="input-row">
+            <label>Trace Length (mm):</label>
+            <input type="number" step="any" id="length" required />
+        </div>
+        <div class="input-row">
+            <label>Copper Thickness (mm):</label>
+            <input type="number" step="any" id="thickness" required />
+        </div>
+        <div class="input-row">
+            <label>Trace Width - Internal (mm):</label>
+            <input type="number" step="any" id="intWidth" required />
+        </div>
+        <div class="input-row">
+            <label>Trace Width - External (mm):</label>
+            <input type="number" step="any" id="extWidth" required />
+        </div>
+        <button type="button" onclick="calculatePCB()">Calculate</button>
+    </form>
+
+    <div class="result" id="result"></div>
+
+    <script>
+        function calculatePCB() {
+            // Get values
+            let length = parseFloat(document.getElementById("length").value);
+            let thickness = parseFloat(document.getElementById("thickness").value);
+            let intWidth = parseFloat(document.getElementById("intWidth").value);
+            let extWidth = parseFloat(document.getElementById("extWidth").value);
+
+            // Internal Trace Calculations
+            let intArea = intWidth * length; // mm²
+            let intVolume = intWidth * thickness * length; // mm³
+
+            // External Trace Calculations
+            let extArea = extWidth * length; // mm²
+            let extVolume = extWidth * thickness * length; // mm³
+
+            // Make HTML for results
+            let result = `
+            <strong>INTERNAL TRACE:</strong><br>
+            Width (input): ${intWidth} mm<br>
+            Height/Thickness (from copper): ${thickness} mm<br>
+            Length (input): ${length} mm<br>
+            Area = ${intArea.toFixed(2)} mm²<br>
+            Volume = ${intVolume.toFixed(2)} mm³
+            <hr>
+            <strong>EXTERNAL TRACE:</strong><br>
+            Width (input): ${extWidth} mm<br>
+            Height/Thickness (from copper): ${thickness} mm<br>
+            Length (input): ${length} mm<br>
+            Area = ${extArea.toFixed(2)} mm²<br>
+            Volume = ${extVolume.toFixed(2)} mm³
+            `;
+            document.getElementById("result").innerHTML = result;
+        }
+    </script>
+</body>
+
+</html>
