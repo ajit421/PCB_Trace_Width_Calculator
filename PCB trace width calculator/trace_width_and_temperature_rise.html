@@ -578,12 +578,12 @@
                 else if (inputs.thicknessUnit === "µm") thickness = umToMil(thickness);
 
                 // Convert length to cm
-                if (inputs.lengthUnit === "in") length *= 2.54;
-                else if (inputs.lengthUnit === "ft") length *= 30.48;
-                else if (inputs.lengthUnit === "mil") length *= 0.00254;
-                else if (inputs.lengthUnit === "mm") length *= 0.1;
-                else if (inputs.lengthUnit === "µm") length *= 0.0001;
-                else if (inputs.lengthUnit === "m") length *= 100;
+                if (inputs.lengthUnit === "in") length *= 0.393701;
+                else if (inputs.lengthUnit === "ft") length *= 0.032808;
+                else if (inputs.lengthUnit === "mil") length *= 393.7008;
+                else if (inputs.lengthUnit === "mm") length *= 10;
+                else if (inputs.lengthUnit === "µm") length *= 10000;
+                else if (inputs.lengthUnit === "m") length *= 0.01;
 
                 // Convert temperatures to Celsius
                 if (inputs.riseUnit === "°F") rise = fToC(rise);

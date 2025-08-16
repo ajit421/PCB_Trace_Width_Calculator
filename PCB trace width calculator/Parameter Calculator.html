@@ -5,79 +5,102 @@
     <title>PCB Trace Calculator</title>
     <meta charset="UTF-8" />
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 500px;
-            margin: 40px auto;
-            border: 1px solid #ddd;
-            padding: 18px;
-        }
 
-        h2 {
-            text-align: center;
-        }
-
-        .input-row {
-            margin-bottom: 12px;
-        }
-
-        label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-
-        input {
-            width: 100%;
-            padding: 6px;
-        }
-
-        .result {
-            background: #f4f8f8;
-            padding: 10px;
-            margin-top: 18px;
-            border-radius: 4px;
-        }
-
-        button {
-            padding: 8px 15px;
-            font-size: 1em;
-        }
     </style>
 </head>
 
 <body>
     <h2>PCB Parameter Calculator</h2>
-    <form id="pcbForm">
+    
         <div class="input-row">
             <label>Current (A):</label>
-            <input type="number" step="any" id="current" required />
+            <input type="number" step="0.1" id="current" step="0.1" min="0.1" value="15" />
         </div>
         <div class="input-row">
             <label>Ambient Temperature (°C):</label>
-            <input type="number" step="any" id="ambientTemp" required />
+            <input type="number" step="0.1" id="ambientTemp" step="0.1" value="30" />
         </div>
 
         <div class="input-row">
             <label>Trace Length (mm):</label>
-            <input type="number" step="any" id="length" required />
+            <input type="number" step="0.1" id="length" value="50" />
         </div>
         <div class="input-row">
             <label>Copper Thickness (mm):</label>
-            <input type="number" step="any" id="thickness" required />
+            <input type="number" step="0.1" id="thickness" value="30" />
         </div>
         <div class="input-row">
             <label>Trace Width - Internal (mm):</label>
-            <input type="number" step="any" id="intWidth" required />
+            <input type="number" step="0.1" id="intWidth" value="3" />
         </div>
         <div class="input-row">
             <label>Trace Width - External (mm):</label>
-            <input type="number" step="any" id="extWidth" required />
+            <input type="number" step="0.1" id="extWidth" value="2" />
         </div>
-        <button type="button" onclick="calculatePCB()">Calculate</button>
-    </form>
 
-    <div class="result" id="result"></div>
+        <div class="results-section">
+            <h2 class="results-title">Calculation Results</h2>
+
+          
+            <div class="width-results">
+                <div class="result-card internal">
+                    <h3>INTERNAL TRACE</h3>
+                    <div class="width-display" id="internalWidth">
+                        internal: Loading...
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Width:</span>
+                        <span class="result-value" id="internalWidth">- mm</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Height/Thickness:</span>
+                        <span class="result-value" id="internalhight">- mm</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Length:</span>
+                        <span class="result-value" id="internallength">- mm</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Area:</span>
+                        <span class="result-value" id="internalarea">- mm</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Volume:</span>
+                        <span class="result-value" id="internalvolume">- mm</span>
+                    </div>
+                </div>
+
+                <div class="result-card external">
+                    <h3>External Trace</h3>
+                    <div class="width-display" id="externaltrace">
+                        Trace: Loading...
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Width:</span>
+                        <span class="result-value" id="externalWidth">- mm</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Height/Thickness:</span>
+                        <span class="result-value" id="externalheight">- mm</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Length:</span>
+                        <span class="result-value" id="externallength">- mm</span>
+                    </div>
+                      <div class="result-item">
+                        <span class="result-label">Area:</span>
+                        <span class="result-value" id="externalArea">- mm</span>
+                    </div>
+                    <div class="result-item">
+                        <span class="result-label">Volume:</span>
+                        <span class="result-value" id="externalvolume">- mm</span>
+                    </div>
+                </div>
+            </div>
+
+
+
+    <div class="result" id="result">Enter values to see calculations...</div>
 
     <script>
         function calculatePCB() {
@@ -87,6 +110,12 @@
             let intWidth = parseFloat(document.getElementById("intWidth").value);
             let extWidth = parseFloat(document.getElementById("extWidth").value);
 
+            // Check if all required values are entered
+            if (isNaN(length) || isNaN(thickness) || isNaN(intWidth) || isNaN(extWidth)) {
+                document.getElementById("result").innerHTML = "Enter all values to see calculations...";
+                return;
+            }
+
             // Internal Trace Calculations
             let intArea = intWidth * length; // mm²
             let intVolume = intWidth * thickness * length; // mm³
@@ -95,24 +124,35 @@
             let extArea = extWidth * length; // mm²
             let extVolume = extWidth * thickness * length; // mm³
 
-            // Make HTML for results
-            let result = `
-            <strong>INTERNAL TRACE:</strong><br>
-            Width (input): ${intWidth} mm<br>
-            Height/Thickness (from copper): ${thickness} mm<br>
-            Length (input): ${length} mm<br>
-            Area = ${intArea.toFixed(2)} mm²<br>
-            Volume = ${intVolume.toFixed(2)} mm³
-            <hr>
-            <strong>EXTERNAL TRACE:</strong><br>
-            Width (input): ${extWidth} mm<br>
-            Height/Thickness (from copper): ${thickness} mm<br>
-            Length (input): ${length} mm<br>
-            Area = ${extArea.toFixed(2)} mm²<br>
-            Volume = ${extVolume.toFixed(2)} mm³
-            `;
-            document.getElementById("result").innerHTML = result;
+           // Update the result card with calculated values
+           let internalWidth = intWidth;
+            let internalHeight = thickness;
+            let internalLength = length;
+            let internalArea = intArea;
+            let internalVolume = intVolume;
+            let externalWidth = extWidth;
+            let externalHeight = thickness;
+            let externalLength = length;
+            let externalArea = extArea;
+            let externalVolume = extVolume;
+
+            // Display the results
+            document.getElementById("internalWidth").textContent = internalWidth.toFixed(2) + " mm";
+            document.getElementById("internalHeight").textContent = internalHeight.toFixed(2) + " mm";
+            document.getElementById("internallength").textContent = internalLength.toFixed(2) + " mm";
+            document.getElementById("internalarea").textContent = internalArea.toFixed(2) + " mm²";
+            document.getElementById("internalvolume").textContent = internalVolume.toFixed(2) + " mm��";
+            document.getElementById("externalWidth").textContent = externalWidth.toFixed(2) + " mm";
+            document.getElementById("externalHeight").textContent = externalHeight.toFixed(2) + " mm";
+            document.getElementById("externallength").textContent = externalLength.toFixed(2) + " mm";
+            document.getElementById("externalarea").textContent = externalArea.toFixed(2) + " mm²";
+            document.getElementById("externalvolume").textContent = externalVolume.toFixed(2) + " mm��";
+            document.getElementById("result").textContent = "Calculations completed successfully!";
+
+            // update the internal and external trace results
+            updateResults();
         }
+
     </script>
 </body>
 

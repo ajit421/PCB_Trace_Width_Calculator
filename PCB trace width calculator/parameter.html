@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>PCB Trace Calculator — Fixed</title>
+    <style>
+       
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>PCB Trace Calculator</h1>
+        </header>
+
+        <section class="input-section">
+            <h3 style="margin-top:14px">Input Parameters</h3>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label for="current">Current (A)</label>
+                    <input id="current" type="number" step="0.01" min="0" value="15">
+                </div>
+
+                <div class="input-group">
+                    <label for="ambientTemp">Ambient Temperature</label>
+                    <div class="input-row">
+                        <input id="ambientTemp" type="number" step="0.1" value="30">
+                        <select id="ambientUnit">
+                            <option value="C">°C</option>
+                            <option value="F">°F</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="length">Trace Length ( L )</label>
+                    <div class="input-row">
+                        <input id="length" type="number" step="0.01" min="0" value="50">
+                        <select id="lengthUnit">
+                            <option value="mm" selected>mm</option>
+                            <option value="cm">cm</option>
+                            <option value="m">m</option>
+                            <option value="in">in</option>
+                            <option value="ft">ft</option>
+                            <option value="mil">mil</option>
+                            <option value="µm">µm</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="thickness">Copper Thickness ( H )</label>
+                    <div class="input-row">
+                        <input id="thickness" type="number" step="0.01" min="0" value="35">
+                        <select id="thicknessUnit">
+                            <option value="um">µm</option>
+                            <option value="mm">mm</option>
+                            <option value="mil">mil</option>
+                            <option value="oz">oz/ft²</option>
+                        </select>
+                    </div>
+                    <div class="small muted">Note: 1 oz ≈ 35 µm (standard)</div>
+                </div>
+
+                <div class="input-group">
+                    <label for="intWidth">Internal Trace Width ( W )</label>
+                    <div class="input-row">
+                        <input id="intWidth" type="number" step="0.01" min="0" value="3">
+                        <select id="intWidthUnit">
+                            <option value="mm" selected>mm</option>
+                            <option value="mil">mil</option>
+                            <option value="µm">µm</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="extWidth">External Trace Width ( W )</label>
+                    <div class="input-row">
+                        <input id="extWidth" type="number" step="0.01" min="0" value="2">
+                        <select id="extWidthUnit">
+                            <option value="mm" selected>mm</option>
+                            <option value="mil">mil</option>
+                            <option value="µm">µm</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="results-section">
+            <h3 style="margin-top:14px">Calculation Results</h3>
+            <div class="results-cards">
+                <div class="result-card">
+                    <h4>INTERNAL TRACE</h4>
+                    <div class="result-item">
+                        <span>Cross-sectional area:</span>
+                        <span id="internalArea_mm2">- mm²</span> |
+                        <span id="internalArea_cm2">- cm²</span> |
+                        <span id="internalArea_m2">- m²</span>
+                    </div>
+
+                    <div class="result-item">
+                        <span>Volume:</span>
+                        <span id="internalVolume_mm3">- mm³</span> |
+                        <span id="internalVolume_cm3">- cm³</span> |
+                        <span id="internalVolume_m3">- m³</span>
+                    </div>
+
+
+                    <div class="result-item"><span>Resistance (R)</span><span id="intResistance">- Ω</span></div>
+                    <div class="result-item"><span>Voltage drop</span><span id="intVoltage">- V</span></div>
+                    <div class="result-item"><span>Power loss</span><span id="intPower">- W</span></div>
+                </div>
+
+                <div class="result-card">
+                    <h4>EXTERNAL TRACE</h4>
+                    <div class="result-item">
+                        <span>Cross-sectional area:</span>
+                        <span id="externalArea_mm2">- mm²</span> |
+                        <span id="externalArea_cm2">- cm²</span> |
+                        <span id="externalArea_m2">- m²</span>
+                    </div>
+
+                    <div class="result-item">
+                        <span>Volume:</span>
+                        <span id="externalVolume_mm3">- mm³</span> |
+                        <span id="externalVolume_cm3">- cm³</span> |
+                        <span id="externalVolume_m3">- m³</span>
+                    </div>
+
+                    <div class="result-item"><span>Resistance (R)</span><span id="extResistance">- Ω</span></div>
+                    <div class="result-item"><span>Voltage drop</span><span id="extVoltage">- V</span></div>
+                    <div class="result-item"><span>Power loss</span><span id="extPower">- W</span></div>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <div class="small muted">Formulas: area = width × thickness; volume = area × length; </div>
+        </footer>
+    </div>
+
+    <script>
+        // ----------------------------
+        // Conversion factors -> to meters
+        // ----------------------------
+        const convToMeters = {
+            length: {
+                'mm': 0.001,
+                'cm': 0.01,
+                'm': 1,
+                'in': 0.0254,
+                'ft': 0.3048,
+                'mil': 0.0000254,
+                'µm': 1e-6
+            },
+            width: { // same as length
+                'mm': 0.001, 'mil': 0.0000254, 'µm': 1e-6
+            },
+            thickness: {
+                // Common conventions:
+                // 'oz' -> thickness for 1 oz copper ~ 35 µm -> 0.000035 m
+                'oz': 35e-6,
+                'mm': 0.001,
+                'mil': 0.0000254,
+                'um': 1e-6,
+                'µm': 1e-6
+            }
+        };
+
+        // Physical constants
+        const RHO_CU = 1.724e-8; // copper resistivity at 20°C in Ω·m
+        const ALPHA_CU = 0.00393; // per °C
+
+        // Helper: format with guard
+        function fmt(v, digits = 4) {
+            if (!isFinite(v)) return '-';
+            return Number(v).toFixed(digits);
+        }
+
+        // Convert ambient temp to Celsius
+        function ambientToC(value, unit) {
+            if (unit === 'F') return (value - 32) * 5 / 9;
+            return value;
+        }
+
+        // Convert area (m^2) to mil^2 for IPC formulas
+        // 1 mm^2 = 1550.0031 mil^2 ; 1 m^2 = 1e6 mm^2 => factor = 1e6 * 1550.0031
+        const MM2_TO_MIL2 = 1550.0031;
+        const M2_TO_MIL2 = 1e6 * MM2_TO_MIL2;
+
+        // IPC-2221 empirical functions:
+        // For external layers:
+        function ipcDeltaT_external(A_m2, I) {
+            // A in mil^2
+            if (A_m2 <= 0) return NaN;
+            const A_mil2 = A_m2 * M2_TO_MIL2;
+            // use the formula: ΔT = ( I / (0.048 * A^0.725) )^(1/0.44)
+            const denom = 0.048 * Math.pow(A_mil2, 0.725);
+            if (denom <= 0) return NaN;
+            const val = Math.pow(I / denom, 1 / 0.44);
+            return val;
+        }
+        // For internal layers:
+        function ipcDeltaT_internal(A_m2, I) {
+            if (A_m2 <= 0) return NaN;
+            const A_mil2 = A_m2 * M2_TO_MIL2;
+            const denom = 0.024 * Math.pow(A_mil2, 0.725);
+            if (denom <= 0) return NaN;
+            return Math.pow(I / denom, 1 / 0.44);
+        }
+
+        function calculatePCB() {
+            try {
+                // Read inputs
+                const I = parseFloat(document.getElementById('current').value);
+                const ambVal = parseFloat(document.getElementById('ambientTemp').value);
+                const ambUnit = document.getElementById('ambientUnit').value;
+
+                const lengthVal = parseFloat(document.getElementById('length').value);
+                const lengthUnit = document.getElementById('lengthUnit').value;
+
+                const thicknessVal = parseFloat(document.getElementById('thickness').value);
+                const thicknessUnit = document.getElementById('thicknessUnit').value;
+
+                const intWVal = parseFloat(document.getElementById('intWidth').value);
+                const intWUnit = document.getElementById('intWidthUnit').value;
+
+                const extWVal = parseFloat(document.getElementById('extWidth').value);
+                const extWUnit = document.getElementById('extWidthUnit').value;
+
+                // Validate
+                if ([I, ambVal, lengthVal, thicknessVal, intWVal, extWVal].some(v => isNaN(v))) {
+                    // invalid input -> skip
+                    return;
+                }
+
+                // Units -> meters
+                const L_m = lengthVal * (convToMeters.length[lengthUnit] ?? 0.001);
+                // thickness: special handling for 'oz'
+                let tFactor = convToMeters.thickness[thicknessUnit];
+                if (thicknessUnit === 'oz') {
+                    tFactor = convToMeters.thickness['oz']; // 35 µm default
+                } else if (thicknessUnit === 'um' || thicknessUnit === 'µm') {
+                    tFactor = convToMeters.thickness['µm'];
+                }
+                const t_m = thicknessVal * (tFactor ?? 1e-6);
+
+                const w_int_m = intWVal * (convToMeters.width[intWUnit] ?? 0.001);
+                const w_ext_m = extWVal * (convToMeters.width[extWUnit] ?? 0.001);
+
+                // Ambient temp to °C
+                const TambC = ambientToC(ambVal, ambUnit);
+
+                // === INTERNAL TRACE calculations ===
+                const A_int_m2 = w_int_m * t_m; // cross-sectional area (m^2)
+                const V_int_m3 = A_int_m2 * L_m; // volume m^3
+
+                // estimate temp rise using IPC (internal)
+                const dT_int = ipcDeltaT_internal(A_int_m2, I); // °C
+                const T_int = TambC + (isFinite(dT_int) ? dT_int : 0);
+
+                // resistance
+                const R20_int = (A_int_m2 > 0) ? (RHO_CU * L_m / A_int_m2) : NaN;
+                const R_int = isFinite(R20_int) ? R20_int * (1 + ALPHA_CU * (T_int - 20)) : NaN;
+                const Vdrop_int = isFinite(R_int) ? I * R_int : NaN;
+                const Ploss_int = isFinite(R_int) ? I * I * R_int : NaN;
+
+                // === EXTERNAL TRACE calculations ===
+                const A_ext_m2 = w_ext_m * t_m;
+                const V_ext_m3 = A_ext_m2 * L_m;
+
+                const dT_ext = ipcDeltaT_external(A_ext_m2, I);
+                const T_ext = TambC + (isFinite(dT_ext) ? dT_ext : 0);
+
+                const R20_ext = (A_ext_m2 > 0) ? (RHO_CU * L_m / A_ext_m2) : NaN;
+                const R_ext = isFinite(R20_ext) ? R20_ext * (1 + ALPHA_CU * (T_ext - 20)) : NaN;
+                const Vdrop_ext = isFinite(R_ext) ? I * R_ext : NaN;
+                const Ploss_ext = isFinite(R_ext) ? I * I * R_ext : NaN;
+
+                // === Update DOM: internal ===
+                // Area
+                document.getElementById('internalArea_mm2').textContent = isFinite(A_int_m2) ? (A_int_m2 * 1e6).toFixed(4) + " mm²" : "-";
+                document.getElementById('internalArea_cm2').textContent = isFinite(A_int_m2) ? (A_int_m2 * 1e4).toFixed(6) + " cm²" : "-";
+                document.getElementById('internalArea_m2').textContent = isFinite(A_int_m2) ? A_int_m2.toExponential(6) + " m²" : "-";
+
+                // Volume
+                document.getElementById('internalVolume_mm3').textContent = isFinite(V_int_m3) ? (V_int_m3 * 1e9).toFixed(4) + " mm³" : "-";
+                document.getElementById('internalVolume_cm3').textContent = isFinite(V_int_m3) ? (V_int_m3 * 1e6).toFixed(6) + " cm³" : "-";
+                document.getElementById('internalVolume_m3').textContent = isFinite(V_int_m3) ? V_int_m3.toExponential(6) + " m³" : "-";
+
+
+                document.getElementById('intResistance').textContent = isFinite(R_int) ? fmt(R_int, 6) + " Ω" : "-";
+                document.getElementById('intVoltage').textContent = isFinite(Vdrop_int) ? fmt(Vdrop_int, 6) + " V" : "-";
+                document.getElementById('intPower').textContent = isFinite(Ploss_int) ? fmt(Ploss_int, 6) + " W" : "-";
+
+                // === Update DOM: external ===
+                document.getElementById('externalArea_mm2').textContent = isFinite(A_ext_m2) ? (A_ext_m2 * 1e6).toFixed(4) + " mm²" : "-";
+                document.getElementById('externalArea_cm2').textContent = isFinite(A_ext_m2) ? (A_ext_m2 * 1e4).toFixed(6) + " cm²" : "-";
+                document.getElementById('externalArea_m2').textContent = isFinite(A_ext_m2) ? A_ext_m2.toExponential(6) + " m²" : "-";
+
+                document.getElementById('externalVolume_mm3').textContent = isFinite(V_ext_m3) ? (V_ext_m3 * 1e9).toFixed(4) + " mm³" : "-";
+                document.getElementById('externalVolume_cm3').textContent = isFinite(V_ext_m3) ? (V_ext_m3 * 1e6).toFixed(6) + " cm³" : "-";
+                document.getElementById('externalVolume_m3').textContent = isFinite(V_ext_m3) ? V_ext_m3.toExponential(6) + " m³" : "-";
+
+
+                document.getElementById('extResistance').textContent = isFinite(R_ext) ? fmt(R_ext, 6) + " Ω" : "-";
+                document.getElementById('extVoltage').textContent = isFinite(Vdrop_ext) ? fmt(Vdrop_ext, 6) + " V" : "-";
+                document.getElementById('extPower').textContent = isFinite(Ploss_ext) ? fmt(Ploss_ext, 6) + " W" : "-";
+
+            } catch (err) {
+                console.error("Calculation error:", err);
+            }
+        }
+
+        // Run setup when window loads
+        window.addEventListener('load', function() {
+            // Attach listeners to inputs & selects
+            const watchSelectors = ['#current', '#ambientTemp', '#ambientUnit', '#length', '#lengthUnit',
+                '#thickness', '#thicknessUnit', '#intWidth', '#intWidthUnit', '#extWidth', '#extWidthUnit'];
+            
+            watchSelectors.forEach(sel => {
+                const el = document.querySelector(sel);
+                if (el) {
+                    el.addEventListener('input', calculatePCB);
+                    el.addEventListener('change', calculatePCB);
+                }
+            });
+
+            // Perform initial calculation
+            calculatePCB();
+        });
+    </script>
+</body>
+
+</html>
