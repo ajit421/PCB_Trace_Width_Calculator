@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magnet Field Calculator</title>
+    <title>PCB Magnet Calculator</title>
     <style>
         * {
             margin: 0;
@@ -14,12 +14,13 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 20px;
+            margin: 20px;
         }
 
         .calculator-container {
@@ -35,39 +36,51 @@
 
         .calculator-container:hover {
             transform: translateY(-5px);
-            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            box-shadow: 0 25px 50px rgba(18, 16, 16, 0.15);
         }
 
         .header {
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .title {
             font-size: 2.5rem;
             font-weight: bold;
-            background: linear-gradient(135deg, #667eea, #7218cd);
+            color:#1e293b;
+            background: linear-gradient(135deg, #1312125b, #20222276);
             /* -webkit-background-clip: text; */
             margin-bottom: 10px;
+            display: inline-block;
+            padding: 10px;
+            border: none;
+            transition: background 0.3s ease, color 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            margin-bottom: 15px;
+            box-sizing: border-box;
         }
-        
+
 
         .subtitle {
-            color: #666;
+            color: #0a0a0a;
             font-size: 1.1rem;
         }
 
         .magnet-tabs {
             display: flex;
             justify-content: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
             gap: 10px;
         }
 
         .tab-btn {
-            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-            color: white;
+            background: #f1f5f9;
+            /* color: #334155; */
             border: none;
+            /* background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); */
+            color: rgb(21, 15, 15);
+            /* border: rgb(0, 255, 60); */
             padding: 12px 24px;
             border-radius: 25px;
             cursor: pointer;
@@ -75,16 +88,20 @@
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
         }
 
         .tab-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(240, 147, 251, 0.4);
+            background: #dbeafe;
+            box-shadow: 0 6px 20px rgb(59, 130, 246, 0.4);
         }
 
         .tab-btn.active {
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            background: #3b82f6;
+            color: white;
+            /* background: linear-gradient(135deg, #4466aee1, #8185dacf); */
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
         }
 
         .calculator-section {
@@ -138,9 +155,10 @@
         }
 
         .input-field:focus {
+            
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
             transform: scale(1.02);
         }
 
@@ -155,7 +173,7 @@
         }
 
         .result-section {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #303032d0, #170e20);
             color: white;
             padding: 25px;
             border-radius: 15px;
@@ -179,7 +197,8 @@
         .result-value {
             font-size: 2.5rem;
             font-weight: bold;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            color: #bdccbdfc;
+            text-shadow: none;
             margin-bottom: 5px;
         }
 
@@ -265,8 +284,8 @@
 <body>
     <div class="calculator-container">
         <div class="header">
-            <h1 class="title">🧲 Magnet Field Calculator</h1>
-            <p class="subtitle">Calculate magnetic field strength in real-time</p>
+            <h1 class="title">🧲 PCB Magnet Calculator</h1>
+            <p class="subtitle">Calculate Surface magnetic Value in real-time</p>
         </div>
 
         <div class="magnet-tabs">
@@ -276,7 +295,7 @@
 
         <!-- Block Magnet Calculator -->
         <div id="block" class="calculator-section active">
-            <div class="magnet-visual">🔲</div>
+            <!-- <div class="magnet-visual">🔲</div> -->
             <div class="input-grid">
                 <div class="input-group">
                     <label class="input-label">Remanence (Br)</label>
@@ -284,7 +303,7 @@
                     <span class="unit">T</span>
                 </div>
                 <div class="input-group">
-                    <label class="input-label">Height (H)</label>
+                    <label class="input-label">Hight (H)</label>
                     <input type="number" class="input-field" id="block_height" step="0.1" min="0" value="3">
                     <span class="unit">mm</span>
                 </div>
@@ -294,12 +313,12 @@
                     <span class="unit">mm</span>
                 </div>
                 <div class="input-group">
-                    <label class="input-label">Width OD (W1)</label>
+                    <label class="input-label">Width OD (W)</label>
                     <input type="number" class="input-field" id="block_width_od" step="0.1" min="0" value="10">
                     <span class="unit">mm</span>
                 </div>
                 <div class="input-group">
-                    <label class="input-label">Width ID (W2)</label>
+                    <label class="input-label">Width ID (W)</label>
                     <input type="number" class="input-field" id="block_width_id" step="0.1" min="0" value="5.15">
                     <span class="unit">mm</span>
                 </div>
@@ -308,7 +327,7 @@
 
         <!-- Ring Magnet Calculator -->
         <div id="ring" class="calculator-section">
-            <div class="magnet-visual">⭕</div>
+            <!-- <div class="magnet-visual">⭕</div> -->
             <div class="input-grid">
                 <div class="input-group">
                     <label class="input-label">Remanence (Br)</label>
@@ -316,7 +335,7 @@
                     <span class="unit">T</span>
                 </div>
                 <div class="input-group">
-                    <label class="input-label">Height (H)</label>
+                    <label class="input-label">Hight (H)</label>
                     <input type="number" class="input-field" id="ring_height" step="0.1" min="0" value="20">
                     <span class="unit">mm</span>
                 </div>
@@ -333,11 +352,11 @@
             </div>
         </div>
 
-       
+
 
         <div class="result-section pulse" id="result">
-            <div class="result-label">Magnetic Field Strength</div>
-            <div class="result-value" id="result_value">0.000000</div>
+            <div class="result-label">Surface magnetic Value</div>
+            <div class="result-value" id="result_value">0.00000</div>
             <div class="result-unit">Tesla (T)</div>
         </div>
 
